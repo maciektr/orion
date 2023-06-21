@@ -3,25 +3,82 @@ name: Tests
 on: [push, pull_request]
 
 env:
-  ARCHIVE_LINK: https://github.com/starkware-libs/cairo/releases/download/v1.1.0/release-x86_64-unknown-linux-musl.tar.gz
+  SCARB_VERSION: 0.4.0
+  CAIRO_LINUX_ARCHIVE_LINK: https://github.com/starkware-libs/cairo/releases/download/v1.1.0/release-x86_64-unknown-linux-musl.tar.gz
   ARCHIVE_NAME: cairo.zip
 
 jobs:
-  main:
-    runs-on: ubuntu-latest
+  scarb-test:
+    name: scarb_test ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux x86-64
+            os: ubuntu-latest
+          # - name: macos x86-64
+          #   os: macos-latest
+          - name: windows x86-64
+            os: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install cairo compiler
+      - name: Setup Scarb for Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          curl -L -o $ARCHIVE_NAME $ARCHIVE_LINK
-          tar -xvf $ARCHIVE_NAME
+          curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | bash -s -- -v "$SCARB_VERSION"
 
-      - name: Check Cairo compiler version and add to path
+      - name: Setup Scarb for Windows
+        if: matrix.os == 'windows-latest'
         run: |
+          C:\msys64\usr\bin\wget.exe https://github.com/software-mansion/scarb/releases/download/v${{ env.SCARB_VERSION }}/scarb-v${{ env.SCARB_VERSION }}-x86_64-pc-windows-msvc.zip
+          7z x scarb-v${{ env.SCARB_VERSION }}-x86_64-pc-windows-msvc.zip
+          Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE/scarb-v${{ env.SCARB_VERSION }}-x86_64-pc-windows-msvc/bin"
+
+      - run: scarb build
+      - run: scarb test
+
+  cairo-test:
+    name: cairo_test ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux x86-64
+            os: ubuntu-latest
+          # - name: macos x86-64
+          #   os: macos-latest
+          - name: windows x86-64
+            os: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Cairo for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          curl -L -o $ARCHIVE_NAME $CAIRO_LINUX_ARCHIVE_LINK
+          tar -xvf $ARCHIVE_NAME
           $(pwd)/cairo/bin/cairo-compile --version
           echo "$(pwd)/cairo/bin" >> $GITHUB_PATH
+
+      - name: Setup Rust for Windows
+        if: matrix.os == 'windows-latest'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Cairo for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          C:\msys64\usr\bin\wget.exe https://github.com/starkware-libs/cairo/archive/refs/tags/v1.1.0.zip
+          7z x v1.1.0.zip
+          cd cairo-1.1.0
+          cargo build --release
+          Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE/cairo-1.1.0/target/release"
 
       - name: Test the code
         run: cairo-test .
