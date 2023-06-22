@@ -70,6 +70,9 @@ jobs:
       - name: Setup Rust for Windows
         if: matrix.os == 'windows-latest'
         uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust cache for Windows  
+        if: matrix.os == 'windows-latest'      
+        uses: Swatinem/rust-cache@v2
 
       - name: Setup Cairo for Windows
         if: matrix.os == 'windows-latest'
