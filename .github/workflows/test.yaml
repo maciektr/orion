@@ -41,16 +41,16 @@ jobs:
       - run: scarb build
       - run: scarb test
 
-  cairo-test:
-    name: cairo_test ${{ matrix.name }}
+  scarb-no-lto-test:
+    name: scarb_no_lto_test ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: linux x86-64
-            os: ubuntu-latest
+#          - name: linux x86-64
+#            os: ubuntu-latest
           # - name: macos x86-64
           #   os: macos-latest
           - name: windows x86-64
@@ -59,29 +59,68 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Cairo for Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          curl -L -o $ARCHIVE_NAME $CAIRO_LINUX_ARCHIVE_LINK
-          tar -xvf $ARCHIVE_NAME
-          $(pwd)/cairo/bin/cairo-compile --version
-          echo "$(pwd)/cairo/bin" >> $GITHUB_PATH
-
       - name: Setup Rust for Windows
         if: matrix.os == 'windows-latest'
         uses: dtolnay/rust-toolchain@stable
-      - name: Setup Rust cache for Windows  
-        if: matrix.os == 'windows-latest'      
+      - name: Setup Rust cache for Windows
+        if: matrix.os == 'windows-latest'
         uses: Swatinem/rust-cache@v2
 
-      - name: Setup Cairo for Windows
+      - name: Compile Scarb for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          C:\msys64\usr\bin\wget.exe https://github.com/starkware-libs/cairo/archive/refs/tags/v1.1.0.zip
-          7z x v1.1.0.zip
-          cd cairo-1.1.0
+          C:\msys64\usr\bin\wget.exe https://github.com/software-mansion/scarb/archive/refs/tags/v0.4.0.zip
+          7z x v0.4.0.zip
+          ls 
+          cd scarb-0.4.0
+          (Get-Content Cargo.toml) -replace 'lto = true', 'lto = false' | Set-Content Cargo.toml
           cargo build --release
-          Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE/cairo-1.1.0/target/release"
+          Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE/scarb-0.4.0/target/release"
 
-      - name: Test the code
-        run: cairo-test .
+      - run: scarb build
+      - run: scarb test
+#
+#  cairo-test:
+#    name: cairo_test ${{ matrix.name }}
+#    runs-on: ${{ matrix.os }}
+#    continue-on-error: true
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        include:
+#          - name: linux x86-64
+#            os: ubuntu-latest
+#          # - name: macos x86-64
+#          #   os: macos-latest
+#          - name: windows x86-64
+#            os: windows-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v2
+#
+#      - name: Setup Cairo for Linux
+#        if: matrix.os == 'ubuntu-latest'
+#        run: |
+#          curl -L -o $ARCHIVE_NAME $CAIRO_LINUX_ARCHIVE_LINK
+#          tar -xvf $ARCHIVE_NAME
+#          $(pwd)/cairo/bin/cairo-compile --version
+#          echo "$(pwd)/cairo/bin" >> $GITHUB_PATH
+#
+#      - name: Setup Rust for Windows
+#        if: matrix.os == 'windows-latest'
+#        uses: dtolnay/rust-toolchain@stable
+#      - name: Setup Rust cache for Windows
+#        if: matrix.os == 'windows-latest'
+#        uses: Swatinem/rust-cache@v2
+#
+#      - name: Setup Cairo for Windows
+#        if: matrix.os == 'windows-latest'
+#        run: |
+#          C:\msys64\usr\bin\wget.exe https://github.com/starkware-libs/cairo/archive/refs/tags/v1.1.0.zip
+#          7z x v1.1.0.zip
+#          cd cairo-1.1.0
+#          cargo build --release
+#          Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE/cairo-1.1.0/target/release"
+#
+#      - name: Test the code
+#        run: cairo-test .
